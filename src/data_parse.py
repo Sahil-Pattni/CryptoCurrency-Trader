@@ -42,19 +42,3 @@ def change_date(date):
 # df['date'] = pd.to_datetime(df['date'])
 # Export to Feather
 df.to_feather(f'../data/{CRYPTO}.feather')
-# %%
-
-# ----- LSTM DATA GENERATION ---- #
-L = 1430 # Evenly divides 41,470
-i = L
-data = []
-while i <= df.shape[0]:
-    past = 0 if i == L else i - L
-    data.append(df.iloc[past:i].close.tolist())
-    i += L
-
-data = np.array(data)
-# Save binary
-np.save(f'../data/{CRYPTO}_binary.npy', data)
-
-print(data.shape)
