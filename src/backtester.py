@@ -6,17 +6,34 @@ import matplotlib.pyplot as plt
 
 CRYPTO = 'BTC'
 df_ = pd.read_feather(f'../data/{CRYPTO}.feather')
+# Split 50/50 train/test
 train = df_.iloc[:int(len(df_)*.5)]
 test = df_.iloc[int(len(df_)*.5):]
 # %%
 
+def backtest(df, initial_balance, positive_signals_required, profit_limit, loss_limit, plot_fig=False):
+    """
+    Runs a backtest simulation with the strategy.
 
-def backtest(df, initial_balance, buys_required, profit_limit, loss_limit, plot_fig=False):
+    Args:
+        df (pandas.DataFrame): Dataframe with the prices.
+        initial_balance (float): Initial balance.
+        positive_signals_required (int): Number of successive positive signals required to buy.
+        profit_limit (float): Profit limit in percentage.
+        loss_limit (float): Loss limit in percentage.
+        plot_fig (bool): If True, plots the simulation.
+    
+    Returns:
+        assets['USDT'] (float): Final USDT balance.
+        assets['CRYPTO'] (float): Final CRYPTO balance.
+        positions (list): List of positions taken.
+        net_worth (list): List of net worth at every stage of backtesting.
+
+    """
     assets = {'USDT': initial_balance, CRYPTO: 0}
-    assert(assets['USDT'] == 1000)
-    positions = []
-    net_worth = []
-    successive_buys_seen = 0
+    positions = [] # List of positions taken
+    net_worth = [] # List of net worth at every stage of backtesting
+    positive_signals_seen = 0 # Number of sucessive positive signals seen
     for index, row in df.iterrows():
         # If last index, liquidate all crypto_asset
         if index == df.index[-1]:
@@ -27,16 +44,16 @@ def backtest(df, initial_balance, buys_required, profit_limit, loss_limit, plot_
         # Only scan for valid buys if USDT to buy
         if assets['USDT'] > 0:
             if row.buy == 1:
-                successive_buys_seen += 1
+                positive_signals_seen += 1
                 # If 3 buys in a row, buy crypto_asset
-                if successive_buys_seen == buys_required:
+                if positive_signals_seen == positive_signals_required:
                     assets[CRYPTO] += assets['USDT'] / row.close
                     assets['USDT'] = 0
-                    successive_buys_seen = 0
+                    positive_signals_seen = 0
                     positions.append([row.close, 'BUY'])
             # If no valid buy, reset counter
-            elif row.buy == 0 and successive_buys_seen > 0:
-                successive_buys_seen = 0
+            elif row.buy == 0 and positive_signals_seen > 0:
+                positive_signals_seen = 0
         # If no USDT, scan for 2% profit to sell
         else:
             profit_met = row.close >= (1+(profit_limit/100)) * positions[-1][0]
@@ -57,6 +74,7 @@ def backtest(df, initial_balance, buys_required, profit_limit, loss_limit, plot_
     assets['USDT'] = round(assets['USDT'], 4)
     assets[CRYPTO] = round(assets[CRYPTO], 4)
 
+    # Plot Net Worth
     if plot_fig:
         spacer = 50
         print(f'Simulation complete.')
@@ -75,6 +93,8 @@ def backtest(df, initial_balance, buys_required, profit_limit, loss_limit, plot_
 
 
 # %%
+# ---- TRAINING ---- #
+# Finds the best parameters for training dataset
 buy_range = list(range(1, 5))
 buy_range.extend(list(range(5, 55, 5)))
 
@@ -90,12 +110,17 @@ for buys_required in tqdm(buy_range):
 
 # %%
 
-def performance_report(log, USDT=1000):
-    return f'RETURN: USDT {log[-1]:,.2f} ({(log[-1]-{USDT})/{USDT} * 100:,.2f})%, BUYS: {log[0]}, PROFI LIMITT: {log[1]:,.2f}%, LOSS LIMIT: {log[2]:,.2f}%'
+def performance_report(log, usdt_initial=1000):
+    """ Log Result """
+    result = (log[-1]-usdt_initial)/usdt_initial * 100
+    return f'RETURN: USDT {log[-1]:,.2f} ({result:,.2f}%), BUYS: {log[0]}, PROFI LIMITT: {log[1]:,.2f}%, LOSS LIMIT: {log[2]:,.2f}%'
+
+# Sort by highest return
 logs.sort(key=lambda x: x[-1], reverse=True)
-print(f'Training:')
+
+# Apply strategy with best training parameters to testing dataset
 print(performance_report(logs[0]))
 usdt, _, positions, net_worth = backtest(
     test, 1000, logs[0][0], logs[0][1], logs[0][2], plot_fig=True)# %%
-net_worth
+# net_worth
 # %%
