@@ -89,13 +89,13 @@ for buys_required in tqdm(buy_range):
 
 
 # %%
+
+def performance_report(log, USDT=1000):
+    return f'RETURN: USDT {log[-1]:,.2f} ({(log[-1]-{USDT})/{USDT} * 100:,.2f})%, BUYS: {log[0]}, PROFI LIMITT: {log[1]:,.2f}%, LOSS LIMIT: {log[2]:,.2f}%'
 logs.sort(key=lambda x: x[-1], reverse=True)
 print(f'Training:')
-print(f'RETURN: USDT {logs[0][-1]:,.2f} ({(logs[0][-1]-1000)/1000 * 100:,.2f})%, BUYS: {logs[0][0]}, PROFI LIMITT: {logs[0][1]:,.2f}%, LOSS LIMIT: {logs[0][2]:,.2f}%')
+print(performance_report(logs[0]))
 usdt, _, positions, net_worth = backtest(
-    test, 1000, logs[0][0], logs[0][1], logs[0][2], plot_fig=True)
-print(f'Testing:')
-print(f'RETURN: USDT {usdt:,.2f} ({(usdt-1000)/1000 * 100:,.2f})%, BUYS: {logs[0][0]}, PROFI LIMITT: {logs[0][1]:,.2f}%, LOSS LIMIT: {logs[0][2]:,.2f}%')
-# %%
+    test, 1000, logs[0][0], logs[0][1], logs[0][2], plot_fig=True)# %%
 net_worth
 # %%
