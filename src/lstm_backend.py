@@ -32,6 +32,7 @@ class LSTMRNN(Module):
         self.hidden_size = hidden_size
         self.num_classes = num_classes
         self.num_layers = num_layers
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.lstm = LSTM(input_size=input_size, hidden_size=hidden_size,
                          num_layers=num_layers, batch_first=True)
@@ -132,6 +133,14 @@ class LSTMBackend():
         self.validation_dl = validation_dl
         self.test_dl = test_dl
         self.full_dl = full_dl
+        self.X_train = X_train
+        self.y_train = y_train
+        self.X_val = X_val
+        self.y_val = y_val
+        self.X_test = X_test
+        self.y_test = y_test
+        self.X_all = X_all
+        self.y_all = y_all
 
     
 
@@ -159,7 +168,7 @@ class LSTMBackend():
         with wandb.init(config=config):
             config = wandb.config
             if model is None:
-                model = LSTMRNN(self.num_classes, self.input_size, config.hidden_size, config.num_layers)
+                model = LSTMRNN(self.num_classes, self.input_size, config.hidden_layers, config.num_layers)
             # Loss Function
             criterion = MSELoss()
             # Monitor Gradients
