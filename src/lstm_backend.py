@@ -8,17 +8,19 @@ from torch.optim import Adam
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import MinMaxScaler
 
+
 class CryptoDataset(Dataset):
-  """ Class to use for DataLoader """
-  def __init__(self, X, y):
-    self.X = X
-    self.y = y
-  
-  def __len__(self):
-    return len(self.X)
-  
-  def __getitem__(self, idx):
-    return [self.X[idx], self.y[idx]]
+    """ Class to use for DataLoader """
+
+    def __init__(self, X, y):
+        self.X = X
+        self.y = y
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return [self.X[idx], self.y[idx]]
 
 
 class LSTMRNN(Module):
@@ -32,17 +34,19 @@ class LSTMRNN(Module):
         self.hidden_size = hidden_size
         self.num_classes = num_classes
         self.num_layers = num_layers
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
 
         self.lstm = LSTM(input_size=input_size, hidden_size=hidden_size,
                          num_layers=num_layers, batch_first=True)
         self.fc = Linear(hidden_size, num_classes)
-        
-    
+
     def forward(self, x):
         # Set initial states
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(self.device)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(self.device)
+        h0 = torch.zeros(self.num_layers, x.size(
+            0), self.hidden_size).to(self.device)
+        c0 = torch.zeros(self.num_layers, x.size(
+            0), self.hidden_size).to(self.device)
 
         # Forward propagate RNN
         _, (h_out, _) = self.lstm(x, (h0, c0))
@@ -56,37 +60,42 @@ class LSTMBackend():
         self.input_size = input_size
         self.num_classes = num_classes
         self.scaler = MinMaxScaler()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
         self.df = pd.read_feather(data_path)
 
-
-    def load_data(self, batch_size: int=2000):
-        self.df['close'] = self.scaler.fit_transform(self.df['close'].values.reshape(-1, 1))
+    def load_data(self, batch_size: int = 2000):
+        self.df['close'] = self.scaler.fit_transform(
+            self.df['close'].values.reshape(-1, 1))
         # Split into X sequence and y
         X, y = [], []
         # Split into rolling windows of 110 hours
-        L = 110 # Sequence Length, evenly divides 41,470
+        L = 110  # Sequence Length, evenly divides 41,470
         for i in range(self.df.shape[0]-L):
             X.append(self.df.iloc[i:(i+L)].close)
             y.append(self.df.iloc[i+L].close)
 
-
         # --- TRAIN / VAL / TEST split --- #
         X = np.array(X)
         y = np.array(y)
-
+        train_size = int((1-0.33) * y.shape[0])
+        val_size = train_size - int(0.2 * train_size)
+        # Take out stagnant data
+        X = X[train_size:]
+        y = y[train_size:]
         train_size = int((1-0.33) * y.shape[0])
         val_size = train_size - int(0.2 * train_size)
 
         # Training is from start until validation index
-        X_train = X[:val_size]
+        X_train = X[:val_size, :]
         y_train = y[:val_size]
         # Validation is from validation index till end of training index
-        X_val = X[val_size:train_size]
+        X_val = X[val_size:train_size, :]
         y_val = y[val_size:train_size]
         # Testing is from training index until end
-        X_test = X[train_size:]
+        X_test = X[train_size:, :]
         y_test = y[train_size:]
+
 
         # ---- Transform to ()num_layers, X.shape[0], hidden_state) shape ---- #
         X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
@@ -123,7 +132,7 @@ class LSTMBackend():
         )
 
         full_dl = DataLoader(
-            CryptoDataset(X_all,y_all),
+            CryptoDataset(X_all, y_all),
             batch_size=batch_size,
             shuffle=False,
             num_workers=2
@@ -142,9 +151,6 @@ class LSTMBackend():
         self.X_all = X_all
         self.y_all = y_all
 
-    
-
-
     def finish(self):
         wandb.finish()
 
@@ -155,7 +161,7 @@ class LSTMBackend():
         Args:
             y_pred (`torch.Tensor`): predicted values
             y_true (`torch.Tensor`): true values
-        
+
         Returns:
             `float`: mean percentage difference
         """
@@ -163,12 +169,12 @@ class LSTMBackend():
         _true_scaled = self.scaler.inverse_transform(y_true.cpu().data.numpy())
         return np.mean(1 - abs((_pred_scaled-_true_scaled)/_true_scaled))
 
-
     def train_model(self, config=None, model=None):
         with wandb.init(config=config):
             config = wandb.config
             if model is None:
-                model = LSTMRNN(self.num_classes, self.input_size, config.hidden_layers, config.num_layers)
+                model = LSTMRNN(self.num_classes, self.input_size,
+                                config.hidden_layers, config.num_layers)
             # Loss Function
             criterion = MSELoss()
             # Monitor Gradients
@@ -178,12 +184,12 @@ class LSTMBackend():
 
             optimizer = Adam(model.parameters(), lr=config['learning_rate'])
             for _ in tqdm(range(config['epochs'])):
-                model.train() # Set state to training
+                model.train()  # Set state to training
                 for _, (inputs, targets) in enumerate(self.train_dl):
                     # Move to `self.device` and convert to `float`
                     inputs = inputs.to(self.device).float()
                     targets = targets.to(self.device).float()
-                    optimizer.zero_grad() # Clear gradients
+                    optimizer.zero_grad()  # Clear gradients
                     yhat = model(inputs)
                     loss = criterion(yhat, targets)
                     _acc = self.calculate_accuracy(yhat, targets)
@@ -197,8 +203,8 @@ class LSTMBackend():
                     # Backpropogate
                     loss.backward()
                     optimizer.step()
-                
-                model.eval() # Set state to inference
+
+                model.eval()  # Set state to inference
                 with torch.no_grad():
                     for _, (inputs, targets) in enumerate(self.validation_dl):
                         # Move to `self.device` and convert to `float`
@@ -210,10 +216,10 @@ class LSTMBackend():
 
                         # To Log to Weights & Biases
                         val_metrics = {
-                        'val/val_loss': loss.item(),
-                        'val/val_accuracy': _acc
-                    }
-                
+                            'val/val_loss': loss.item(),
+                            'val/val_accuracy': _acc
+                        }
+
                 # Log
                 wandb.log({**train_metrics, **val_metrics})
         return model
