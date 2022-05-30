@@ -121,6 +121,8 @@ logs.sort(key=lambda x: x[-1], reverse=True)
 # Apply strategy with best training parameters to testing dataset
 print(performance_report(logs[0]))
 usdt, _, positions, net_worth = backtest(
-    test, 1000, logs[0][0], logs[0][1], logs[0][2], plot_fig=True)# %%
+    train, 1000, logs[0][0], logs[0][1], logs[0][2], plot_fig=True
+)
+print(f'{(usdt-1000)/1000*100:.2f}% return')
 # net_worth
 # %%
