@@ -7,7 +7,7 @@ import pandas as pd
 import json
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from lstm_backend import LSTMRNN
+from lstm_backend import LSTMRNN, LSTMBackend
 # %%
 # --- GLOBAL CONSTANTS --- #
 CONFIG_FILEPATH = '../data/btc_lstm_config.json'
